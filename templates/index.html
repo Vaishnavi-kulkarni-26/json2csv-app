@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>JSON to CSV Converter</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>JSON to CSV Converter</h1>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+      <label>Select JSON file(s):</label>
+      <input type="file" name="json_files" multiple required>
+      <button type="submit">Convert to CSV</button>
+    </form>
+  </div>
+</body>
+</html>
