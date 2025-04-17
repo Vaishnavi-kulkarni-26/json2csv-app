@@ -1,114 +1,52 @@
-# from flask import Flask, render_template, request, send_file
-# import os
-# import json
-# import csv
-# from werkzeug.utils import secure_filename
-
-# app = Flask(__name__)
-
-# UPLOAD_FOLDER = 'uploads'
-# OUTPUT_FOLDER = 'output'
-
-# # Create folders only if they don’t exist
-# if not os.path.exists(UPLOAD_FOLDER):
-#     os.makedirs(UPLOAD_FOLDER)
-
-# if not os.path.exists(OUTPUT_FOLDER):
-#     os.makedirs(OUTPUT_FOLDER)
-
-# @app.route('/')
-# def index():
-#     return render_template('index.html')
-
-# @app.route('/convert', methods=['POST'])
-# def convert():
-#     if 'json_file' not in request.files:
-#         return 'No file part', 400
-
-#     file = request.files['json_file']
-#     if file.filename == '':
-#         return 'No selected file', 400
-
-#     if file:
-#         filename = secure_filename(file.filename)
-#         filepath = os.path.join(UPLOAD_FOLDER, filename)
-#         file.save(filepath)
-
-#         with open(filepath, 'r') as f:
-#             try:
-#                 data = json.load(f)
-#             except json.JSONDecodeError:
-#                 return 'Invalid JSON file', 400
-
-#         # Normalize if the root is a dictionary
-#         if isinstance(data, dict):
-#             data = [data]
-
-#         if not isinstance(data, list):
-#             return 'JSON must be an object or list of objects', 400
-
-#         if len(data) == 0:
-#             return 'Empty JSON file', 400
-
-#         # Create CSV
-#         csv_filename = filename.rsplit('.', 1)[0] + '.csv'
-#         csv_path = os.path.join(OUTPUT_FOLDER, csv_filename)
-
-#         with open(csv_path, 'w', newline='') as csvfile:
-#             writer = csv.DictWriter(csvfile, fieldnames=data[0].keys())
-#             writer.writeheader()
-#             for item in data:
-#                 writer.writerow(item)
-
-#         return send_file(csv_path, as_attachment=True)
-
-#     return 'File upload failed', 500
-
-# if __name__ == '__main__':
-#     app.run(debug=True)
-
-
-from flask import Flask, render_template, request, send_file
+from flask import Flask, request, send_file, render_template
 import os
 import json
 import csv
-from werkzeug.utils import secure_filename
+import uuid
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = 'uploads'
 OUTPUT_FOLDER = 'output'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# Make sure 'output' folder exists and is a folder, not a file
+if os.path.exists(OUTPUT_FOLDER) and not os.path.isdir(OUTPUT_FOLDER):
+    os.remove(OUTPUT_FOLDER)
+
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-@app.route('/', methods=['GET', 'POST'])
-def upload_file():
-    if request.method == 'POST':
-        file = request.files['json_file']
-        if file and file.filename.endswith('.json'):
-            filename = secure_filename(file.filename)
-            json_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(json_path)
+@app.route('/')
+def index():
+    return render_template('index.html')  # your frontend page
 
-            # Convert JSON to CSV
-            with open(json_path, 'r') as f:
-                data = json.load(f)
+@app.route('/convert', methods=['POST'])
+def convert_json_to_csv():
+    if 'file' not in request.files:
+        return 'No file uploaded', 400
 
-            # Handle if JSON is not a list
-            if isinstance(data, dict):
-                data = [data]
+    file = request.files['file']
+    if not file.filename.endswith('.json'):
+        return 'File must be a JSON', 400
 
-            csv_filename = filename.rsplit('.', 1)[0] + '.csv'
-            csv_path = os.path.join(app.config['OUTPUT_FOLDER'], csv_filename)
+    try:
+        json_data = json.load(file)
+    except json.JSONDecodeError:
+        return 'Invalid JSON file', 400
 
-            with open(csv_path, 'w', newline='') as csvfile:
-                writer = csv.DictWriter(csvfile, fieldnames=data[0].keys())
-                writer.writeheader()
-                writer.writerows(data)
+    if isinstance(json_data, dict):
+        # wrap in a list to write rows
+        json_data = [json_data]
 
-            return send_file(csv_path, as_attachment=True)
+    # Generate a unique output file name
+    output_filename = f"{uuid.uuid4().hex}.csv"
+    output_path = os.path.join(OUTPUT_FOLDER, output_filename)
 
-    return render_template('index.html')
+    # Write CSV
+    with open(output_path, 'w', newline='') as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=json_data[0].keys())
+        writer.writeheader()
+        writer.writerows(json_data)
+
+    return send_file(output_path, as_attachment=True)
+
+if __name__ == '__main__':
+    app.run(debug=True)
