@@ -1,52 +1,41 @@
-from flask import Flask, request, send_file, render_template
-import os
+from flask import Flask, render_template, request, Response
 import json
 import csv
-import uuid
+import io
 
 app = Flask(__name__)
 
-OUTPUT_FOLDER = 'output'
-
-# Make sure 'output' folder exists and is a folder, not a file
-if os.path.exists(OUTPUT_FOLDER) and not os.path.isdir(OUTPUT_FOLDER):
-    os.remove(OUTPUT_FOLDER)
-
-os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-
-@app.route('/')
-def index():
-    return render_template('index.html')  # your frontend page
-
-@app.route('/convert', methods=['POST'])
-def convert_json_to_csv():
-    if 'file' not in request.files:
-        return 'No file uploaded', 400
-
-    file = request.files['file']
-    if not file.filename.endswith('.json'):
-        return 'File must be a JSON', 400
-
-    try:
-        json_data = json.load(file)
-    except json.JSONDecodeError:
-        return 'Invalid JSON file', 400
-
+def json_to_csv(json_data):
     if isinstance(json_data, dict):
-        # wrap in a list to write rows
         json_data = [json_data]
 
-    # Generate a unique output file name
-    output_filename = f"{uuid.uuid4().hex}.csv"
-    output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+    if not json_data:
+        return ""
 
-    # Write CSV
-    with open(output_path, 'w', newline='') as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames=json_data[0].keys())
-        writer.writeheader()
-        writer.writerows(json_data)
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=json_data[0].keys())
+    writer.writeheader()
+    for row in json_data:
+        writer.writerow(row)
+    
+    return output.getvalue()
 
-    return send_file(output_path, as_attachment=True)
-
-if __name__ == '__main__':
-    app.run(debug=True)
+@app.route('/', methods=['GET', 'POST'])  # ✅ This line is key
+def upload_file():
+    if request.method == 'POST':
+        file = request.files['file']
+        if file and file.filename.endswith('.json'):
+            try:
+                json_data = json.load(file)
+                csv_data = json_to_csv(json_data)
+                return Response(
+                    csv_data,
+                    mimetype='text/csv',
+                    headers={"Content-Disposition": "attachment;filename=converted.csv"}
+                )
+            except Exception as e:
+                return f"Error processing file: {e}"
+        else:
+            return "Please upload a valid .json file"
+    
+    return render_template("index.html")

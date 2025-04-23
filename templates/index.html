@@ -1,4 +1,4 @@
-<!-- <!DOCTYPE html>
+<!-- <!-- <!DOCTYPE html>
 <html>
 <head>
   <title>JSON to CSV Converter</title>
@@ -17,7 +17,7 @@
 </html> -->
 
 
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html>
 <head>
     <title>JSON to CSV Converter</title>
@@ -34,6 +34,33 @@
     <form action="/" method="post" enctype="multipart/form-data">
         <input type="file" name="json_file" accept=".json" required>
         <br><br>
+        <input type="submit" value="Convert to CSV">
+    </form>
+</body>
+</html> --> -->
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JSON to CSV Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 100px;
+        }
+        input[type="file"],
+        input[type="submit"] {
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Upload JSON File</h1>
+    <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".json" required><br>
         <input type="submit" value="Convert to CSV">
     </form>
 </body>
